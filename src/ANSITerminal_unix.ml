@@ -175,26 +175,28 @@ let style_to_string = function
   | Background White -> "47"
   | Background Default -> "49"
 
-
-let print_with pr ~tty style txt =
+let print_with style txt oc =
+  let tty = is_out_channel_atty oc in
   if tty then (
-    pr "\027[";
-    pr (String.concat ";" (List.map style_to_string style));
-    pr "m";
+    output_string oc "\027[";
+    output_string oc (String.concat ";" (List.map style_to_string style));
+    output_string oc "m";
   );
-  pr txt;
-  if tty && !autoreset then pr "\027[0m"
+  output_string oc txt;
+  if tty && !autoreset then output_string oc "\027[0m"
+
+let ppf_print_with style txt ppf =
+  Format.pp_print_string ppf "\027[";
+  Format.pp_print_string ppf (String.concat ";" (List.map style_to_string style));
+  Format.pp_print_string ppf "m";
+  Format.pp_print_string ppf txt;
+  if !autoreset then Format.pp_print_string ppf "\027[0m"
 
 let print_string style txt =
-  print_with print_string style txt ~tty:(is_out_channel_atty stdout)
+  print_with style txt stdout
 
 let prerr_string style txt =
-  print_with prerr_string style txt ~tty:(is_out_channel_atty stderr)
-
-let printf style = ksprintf (print_string style)
-
-let eprintf style = ksprintf (prerr_string style)
-
+  print_with style txt stderr
 
 let to_string style txt =
   let s = "\027["
@@ -203,4 +205,19 @@ let to_string style txt =
           ^ txt in
   if !autoreset then s ^ "\027[0m" else s
 
-let sprintf style = ksprintf (to_string style)
+module Printf = struct
+  let printf style = ksprintf (print_string style)
+  let eprintf style = ksprintf (prerr_string style)
+  let sprintf style = ksprintf (to_string style)
+  let fprintf style oc = ksprintf (fun s -> print_with style s oc)
+end
+
+module Format = struct
+  let wrap style pp ppf v =
+    Format.(kasprintf (fun s -> fprintf ppf "%s" (to_string style s)) "%a" pp v)
+  let printf style = Format.kasprintf (print_string style)
+  let eprintf style = Format.kasprintf (prerr_string style)
+  let asprintf style = Format.kasprintf (to_string style)
+  let fprintf style ppf =
+    Format.kasprintf (fun s -> ppf_print_with style s ppf)
+end

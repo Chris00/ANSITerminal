@@ -113,11 +113,20 @@ let print ch styles txt =
 let print_string = print stdout
 let prerr_string = print stderr
 
-let printf style = kprintf (print_string style)
+module Printf = struct
+  let printf style = kprintf (print_string style)
+  let eprintf style = ksprintf (prerr_string style)
+  let sprintf _style = sprintf
+  let fprintf _ _ _ = invalid_arg "not implemented"
+end
 
-let eprintf style = ksprintf (prerr_string style)
-
-let sprintf style = sprintf
+module Format = struct
+  let wrap _ _ _ _ = invalid_arg "not implemented"
+  let printf _ _ = invalid_arg "not implemented"
+  let eprintf _ _ = invalid_arg "not implemented"
+  let asprintf _ _ = invalid_arg "not implemented"
+  let fprintf _ _ _ = invalid_arg "not implemented"
+end
 
 external set_cursor_ : int -> int -> unit = "ANSITerminal_SetCursorPosition"
 external pos_cursor : unit -> int * int = "ANSITerminal_pos"

@@ -90,23 +90,38 @@ val print_string : style list -> string -> unit
     off. *)
 
 val prerr_string : style list -> string -> unit
-  (** Like [print_string] but prints on the standard error. *)
+(** Like [print_string] but prints on the standard error. *)
 
-val printf : style list -> ('a, unit, string, unit) format4 -> 'a
-(** [printf attr format arg1 ... argN] prints the arguments
-    [arg1],...,[argN] according to [format] with the attibutes [attr].
-    After printing, the attributes are automatically reseted to the
-    defaults, unless autoreset is turned off. *)
+module Printf : sig
+  val printf : style list -> ('a, unit, string, unit) format4 -> 'a
+  (** [printf attr format arg1 ... argN] prints the arguments
+      [arg1],...,[argN] according to [format] with the attibutes [attr].
+      After printing, the attributes are automatically reseted to the
+      defaults, unless autoreset is turned off. *)
 
-val eprintf : style list -> ('a, unit, string, unit) format4 -> 'a
-(** Same as {!printf} but prints the result on [stderr]. *)
+  val eprintf : style list -> ('a, unit, string, unit) format4 -> 'a
+  (** Same as {!printf} but prints the result on [stderr]. *)
 
-val sprintf : style list -> ('a, unit, string) format -> 'a
-(** Same as {!printf} but returns the result in a string.  This only
-    works on ANSI compliant terminals — for which escape sequences are
-    used — and not under Windows — where system calls are required.
-    On Windows, it is identical to the standard [sprintf]. *)
+  val sprintf : style list -> ('a, unit, string) format -> 'a
+  (** Same as {!printf} but returns the result in a string.  This only
+      works on ANSI compliant terminals — for which escape sequences are
+      used — and not under Windows — where system calls are required.
+      On Windows, it is identical to the standard [sprintf]. *)
 
+  val fprintf :
+    style list -> out_channel -> ('a, unit, string, unit) format4 -> 'a
+end
+
+module Format : sig
+  val wrap : style list ->
+    (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a -> unit
+  val printf : style list -> ('a, Format.formatter, unit) format -> 'a
+  val eprintf : style list -> ('a, Format.formatter, unit) format -> 'a
+  val asprintf :
+    style list -> ('a, Format.formatter, unit, string) format4 -> 'a
+  val fprintf :
+    style list -> Format.formatter -> ('a, Format.formatter, unit, unit) format4 -> 'a
+end
 
 (** {2 Erasing} *)
 
