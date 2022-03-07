@@ -42,12 +42,12 @@ value ANSITerminal_term_size(value vfd)
 
 #ifdef TIOCGSIZE
   if (ioctl(fd, TIOCGSIZE, &win))
-    failwith("ANSITerminal.size");
+    caml_failwith("ANSITerminal.size");
   x = win.ts_cols;
   y = win.ts_lines;
 #elif defined TIOCGWINSZ
   if (ioctl(fd, TIOCGWINSZ, &win))
-    failwith("ANSITerminal.size");
+    caml_failwith("ANSITerminal.size");
   x = win.ws_col;
   y = win.ws_row;
 #else
