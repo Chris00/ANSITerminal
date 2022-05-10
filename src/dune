@@ -1,8 +1,8 @@
 (library
- (name        ANSITerminal)
- (public_name ANSITerminal)
- (modules     ANSITerminal ANSITerminal_common)
- (c_names     ANSITerminal_stubs)
+ (name          ANSITerminal)
+ (public_name   ANSITerminal)
+ (modules       ANSITerminal ANSITerminal_common)
+ (foreign_stubs (language c) (names ANSITerminal_stubs))
  (synopsis "Basic control of ANSI compliant terminals and the windows shell")
  (libraries unix bytes))
 
