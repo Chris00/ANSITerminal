@@ -23,13 +23,13 @@
 
 #include <stdio.h>
 #include <string.h>
+#define CAML_INTERNALS
+#include <caml/io.h>
 #include <caml/mlvalues.h>
 #include <caml/alloc.h>
 #include <caml/memory.h>
 #include <caml/callback.h>
 #include <windows.h>
-
-#include "io.h"
 
 /* From otherlibs/win32unix/channels.c */
 extern long _get_osfhandle(int);

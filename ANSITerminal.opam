@@ -14,7 +14,7 @@ build: [
   ["dune" "runtest" "-p" name "-j" jobs] {with-test}
 ]
 depends: [
-  "ocaml"
+  "ocaml" {os != "win32" | >= "4.04"}
   "dune" {>= "2.0"}
   "base-bytes"
   "base-unix"
