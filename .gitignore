@@ -3,3 +3,4 @@
 *.install
 *.tar.gz
 _build
+*~

@@ -40,7 +40,8 @@ type color =
     every terminal. *)
 type style =
   | Reset
-  | Bold | Underlined | Blink | Inverse | Hidden
+  | Bold | Underlined | Blink | Inverse
+  | Hidden (* Not supported on Windows, and not implemented by some terminals *)
   | Foreground of color
   | Background of color
 
@@ -176,4 +177,7 @@ val isatty : (Unix.file_descr -> bool) ref
 (** Function used to detect whether the current output is connected to
    a TTY.  Defaults to [Unix.isatty]. *)
 
-;;
+val use_windows_implementation : bool -> unit
+(** Whether to use Windows or Unix implementation *)
+
+val implementation: unit -> string

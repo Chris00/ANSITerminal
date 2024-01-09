@@ -21,6 +21,12 @@
    LICENSE for more details.
 */
 
+#if defined ( _WIN32 ) || defined ( _WIN64 )
+#define BUILT_ON_WINDOWS
+#endif
+
+
+
 #include <stdio.h>
 #include <string.h>
 #define CAML_INTERNALS
@@ -29,20 +35,23 @@
 #include <caml/alloc.h>
 #include <caml/memory.h>
 #include <caml/callback.h>
+#include <caml/fail.h>
+
+#ifdef BUILT_ON_WINDOWS
 #include <windows.h>
+#include <io.h>
 
 /* From otherlibs/win32unix/channels.c */
-extern long _get_osfhandle(int);
 #define HANDLE_OF_CHAN(vchan) ((HANDLE) _get_osfhandle(Channel(vchan)->fd))
 
-static HANDLE hStdout;
-static CONSOLE_SCREEN_BUFFER_INFO *csbiInfo = NULL;
+HANDLE hStdout;
+CONSOLE_SCREEN_BUFFER_INFO *csbiInfo = NULL;
 
 void raise_error(char *fname, char *msg)
 {
   CAMLparam0();
   CAMLlocal2(vfname, vmsg);
-  static value *exn = NULL;
+  static const value *exn = NULL;
   value args[2];
   
   if (exn == NULL) {
@@ -63,7 +72,7 @@ void exn_of_error(char *fname, BOOL cond)
   CAMLlocal2(vfname, vmsg);
   char *msg, *p;
   LPVOID lpMsgBuf;
-  static value *exn = NULL;
+  static const value *exn = NULL;
   value args[2];
   
   if (cond) {
@@ -99,6 +108,7 @@ void exn_of_error(char *fname, BOOL cond)
 
 #define SET_CSBI(fname)                                               \
   if (! csbiInfo) {                                                   \
+    csbiInfo = ( CONSOLE_SCREEN_BUFFER_INFO *)malloc (sizeof(CONSOLE_SCREEN_BUFFER_INFO)); \
     hStdout = GetStdHandle(STD_OUTPUT_HANDLE);                        \
     if (hStdout == INVALID_HANDLE_VALUE) {                            \
       raise_error(fname, "Invalid stdout handle");                    \
@@ -145,6 +155,7 @@ value ANSITerminal_pos(value vunit)
   SMALL_RECT w;
   SHORT x, y;
 
+  SET_CSBI("ANSITerminal.pos");
   exn_of_error("ANSITerminal.pos_cursor",
                ! GetConsoleScreenBufferInfo(hStdout, csbiInfo));
   w = csbiInfo->srWindow;
@@ -196,7 +207,7 @@ value ANSITerminal_SetCursorPosition(value vx, value vy)
 {
   COORD c;
   SMALL_RECT w;
-  
+
   SET_CSBI("ANSITerminal.set_cursor");
   exn_of_error("ANSITerminal.set_cursor",
                ! GetConsoleScreenBufferInfo(hStdout, csbiInfo));
@@ -205,11 +216,11 @@ value ANSITerminal_SetCursorPosition(value vx, value vy)
   w = csbiInfo->srWindow;
   c.X = Int_val(vx) - 1 + w.Left;
   c.Y = Int_val(vy) - 1 + w.Top;
-  
+
   // very subtle debugging method...
-  fprintf(stderr,"vx,vy = %d,%d --> [c.X,Y = %d,%d ; L %d R %d T %d B %d]\n", 
-          Int_val(vx),Int_val(vy), c.X, c.Y, w.Left, w.Right, w.Top, w.Bottom);
-          
+  // fprintf(stderr,"vx,vy = %d,%d --> [c.X,Y = %d,%d ; L %d R %d T %d B %d]\n", 
+  //        Int_val(vx),Int_val(vy), c.X, c.Y, w.Left, w.Right, w.Top, w.Bottom);
+
   if (c.X > w.Right) c.X = w.Right;
   if (c.Y > w.Bottom) c.Y = w.Bottom;
   exn_of_error("ANSITerminal.set_cursor",
@@ -223,7 +234,7 @@ value ANSITerminal_FillConsoleOutputCharacter(
 {
   CAMLparam1(vchan);
   HANDLE h = HANDLE_OF_CHAN(vchan);
-  int NumberOfCharsWritten;
+  DWORD NumberOfCharsWritten;
   COORD dwWriteCoord;
 
   SET_CSBI("ANSITerminal.erase");
@@ -275,3 +286,80 @@ value ANSITerminal_Scroll(value vx)
                  &chiFill));      // fill character and color
   return Val_unit;
 }
+
+#else
+
+#define NO_UNIX_VERSION(f_name)						\
+	CAMLexport							\
+	value ANSITerminal_## f_name(value vchan, value vcode)		\
+	{								\
+	     caml_failwith("ANSITerminal: Windows stubs not compiled"); \
+	}
+
+NO_UNIX_VERSION(set_style);
+NO_UNIX_VERSION(unset_style);
+NO_UNIX_VERSION(get_style);
+NO_UNIX_VERSION(pos);
+NO_UNIX_VERSION(size);
+NO_UNIX_VERSION(resize);
+NO_UNIX_VERSION(SetCursorPosition);
+NO_UNIX_VERSION(FillConsoleOutputCharacter);
+NO_UNIX_VERSION(Scroll);
+
+
+#endif
+
+#ifndef BUILT_ON_WINDOWS
+#include <sys/ioctl.h>
+#include <termios.h>
+#endif
+
+/* Based on http://www.ohse.de/uwe/software/resize.c.html */
+/* Inquire actual terminal size (this it what the kernel thinks - not
+ * was the user on the over end of the phone line has really). */
+CAMLexport
+value ANSITerminal_term_size(value vfd)
+{
+  CAMLparam1(vfd);
+  CAMLlocal1(vsize);
+  int fd = Int_val(vfd);
+  int x, y;
+  
+#ifdef TIOCGSIZE
+  struct ttysize win;
+#elif defined(TIOCGWINSZ)
+  struct winsize win;
+#endif
+
+#ifdef TIOCGSIZE
+  if (ioctl(fd, TIOCGSIZE, &win))
+    caml_failwith("ANSITerminal.size");
+  x = win.ts_cols;
+  y = win.ts_lines;
+#elif defined TIOCGWINSZ
+  if (ioctl(fd, TIOCGWINSZ, &win))
+    caml_failwith("ANSITerminal.size");
+  x = win.ws_col;
+  y = win.ws_row;
+#else
+  {
+    const char *s;
+    s = getenv("LINES");
+    if (s)
+      y = strtol(s,NULL,10);
+    else
+      y = 25;
+    s = getenv("COLUMNS");
+    if (s)
+      x = strtol(s,NULL,10);
+    else
+      x = 80;
+  }
+#endif
+
+  vsize = caml_alloc_tuple(2);
+  Store_field(vsize, 0, Val_int(x));
+  Store_field(vsize, 1, Val_int(y));
+  CAMLreturn(vsize);
+}
+

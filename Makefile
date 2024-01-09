@@ -9,6 +9,11 @@ all: build
 test: all
 	_build/default/tests/test.exe
 
+install-windows:
+	rsync -av _build/install/default/. $(shell cygpath --unix $(OPAM_SWITCH_PREFIX))/.
+
+install-unix:
+	rsync -av _build/install/default/. $(OPAM_SWITCH_PREFIX)/.
 
 clean:
 	dune clean

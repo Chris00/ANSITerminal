@@ -26,9 +26,7 @@
 
 open Printf
 open Scanf
-include ANSITerminal_common
-
-let isatty = ref Unix.isatty
+open ANSITerminal_common
 
 let is_out_channel_atty ch = !isatty(Unix.descr_of_out_channel ch)
 

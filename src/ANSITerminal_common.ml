@@ -16,6 +16,7 @@ let autoreset = ref true
 
 let set_autoreset b = autoreset := b
 
+let isatty = ref Unix.isatty
 
 type color =
     Black | Red | Green | Yellow | Blue | Magenta | Cyan | White | Default

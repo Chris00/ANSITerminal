@@ -19,12 +19,10 @@
 *)
 
 open Printf
-include ANSITerminal_common
+open ANSITerminal_common
 
 exception Error of string * string
 let () = Callback.register_exception "ANSITerminal.Error" (Error("",""))
-
-let isatty = ref Unix.isatty
 
 let is_out_channel_atty ch = !isatty(Unix.descr_of_out_channel ch)
 
@@ -188,24 +186,20 @@ external fill : out_channel -> char -> n:int -> x:int -> y:int -> int
    actually written. *)
 
 let erase loc =
-  if is_out_channel_atty stdout then (
+  if is_out_channel_atty stdout then
     let w, h = size() in
     match loc with
     | Eol ->
-       let x, y = pos_cursor() in
-       ignore(fill stdout ' ' ~n:(w - x + 1) ~x ~y)
+      let x, y = pos_cursor() in
+      ignore(fill stdout ' ' ~n:(w - x + 1) ~x ~y)
     | Above ->
-       let x, y = pos_cursor() in
-       ignore(fill stdout ' ' ~n:((y - 1) * w + x) ~x:1 ~y:1)
+      let x, y = pos_cursor() in
+      ignore(fill stdout ' ' ~n:((y - 1) * w + x) ~x:1 ~y:1)
     | Below ->
-       let x, y = pos_cursor() in
-       ignore(fill stdout ' ' ~n:(w - x + 1 + (h - y) * w) ~x ~y)
+      let x, y = pos_cursor() in
+      ignore(fill stdout ' ' ~n:(w - x + 1 + (h - y) * w) ~x ~y)
     | Screen ->
-       ignore(fill stdout ' ' ~n:(w * h) ~x:1 ~y:1)
-  )
-
-
-;;
-(* Local Variables: *)
-(* compile-command: "make ANSITerminal_win.cmo" *)
-(* End: *)
+      let x, y = pos_cursor() in
+      set_cursor 1 1;
+      ignore(fill stdout ' ' ~n:(w * h) ~x:1 ~y:1);
+      set_cursor x y
